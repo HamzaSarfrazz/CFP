@@ -122,6 +122,7 @@ def parse_report_totals(raw_text: str) -> dict:
     Pulls summary figures from the bottom of the report:
       - USED (travel load) from the PASSENGER TOTALS -> TOTALS: row
       - Allowance, Weight, and Average KG per Passenger from BAGGAGE TOTALS
+    Numeric weight fields are returned as plain digits (no trailing "kg").
     """
     result = {}
     lines = raw_text.splitlines()
@@ -157,12 +158,13 @@ def parse_report_totals(raw_text: str) -> dict:
     if m:
         result["allowance"] = m.group(1)
 
-    m = re.search(r"Weight:\s*\t?\s*([\d,.]+kg)\s*\t?\s*([\d,.]+kg)?", raw_text)
+    # Digits only (no "kg" suffix)
+    m = re.search(r"Weight:\s*\t?\s*([\d,.]+)kg\s*\t?\s*([\d,.]+)?kg?", raw_text)
     if m:
         result["weight_checked"] = m.group(1)
         result["weight_carry"] = m.group(2) or ""
 
-    m = re.search(r"Average KG per Passenger:\s*\t?\s*([\d,.]+kg)\s*\t?\s*([\d,.]+kg)?", raw_text)
+    m = re.search(r"Average KG per Passenger:\s*\t?\s*([\d,.]+)kg\s*\t?\s*([\d,.]+)?kg?", raw_text)
     if m:
         result["avg_checked"] = m.group(1)
         result["avg_carry"] = m.group(2) or ""
