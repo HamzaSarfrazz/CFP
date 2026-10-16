@@ -121,8 +121,8 @@ def parse_report_totals(raw_text: str) -> dict:
     """
     Pulls summary figures from the bottom of the report:
       - USED (travel load) from the PASSENGER TOTALS -> TOTALS: row
-      - Allowance, Weight, and Average KG per Passenger from BAGGAGE TOTALS
-    Numeric weight fields are returned as plain digits (no trailing "kg").
+      - Allowance, Weight, Average KG per Piece and Average KG per Passenger
+        from BAGGAGE TOTALS
     """
     result = {}
     lines = raw_text.splitlines()
@@ -158,13 +158,16 @@ def parse_report_totals(raw_text: str) -> dict:
     if m:
         result["allowance"] = m.group(1)
 
-    # Digits only (no "kg" suffix)
-    m = re.search(r"Weight:\s*\t?\s*([\d,.]+)kg\s*\t?\s*([\d,.]+)?kg?", raw_text)
+    m = re.search(r"Weight:\s*\t?\s*([\d,.]+kg)\s*\t?\s*([\d,.]+kg)?", raw_text)
     if m:
         result["weight_checked"] = m.group(1)
         result["weight_carry"] = m.group(2) or ""
 
-    m = re.search(r"Average KG per Passenger:\s*\t?\s*([\d,.]+)kg\s*\t?\s*([\d,.]+)?kg?", raw_text)
+    m = re.search(r"Average KG per Piece:\s*\t?\s*([\d,.]+kg)", raw_text)
+    if m:
+        result["avg_piece_checked"] = m.group(1)
+
+    m = re.search(r"Average KG per Passenger:\s*\t?\s*([\d,.]+kg)\s*\t?\s*([\d,.]+kg)?", raw_text)
     if m:
         result["avg_checked"] = m.group(1)
         result["avg_carry"] = m.group(2) or ""
@@ -217,6 +220,17 @@ def parse_cfp(raw_text: str) -> dict:
         result["alt_stn_source"] = "none"
 
     return result
+
+
+def kg_to_num(s):
+    m = re.search(r"[\d,.]+", s or "")
+    return float(m.group().replace(",", "")) if m else None
+
+
+def pick_highest_kg(*values):
+    """Returns the original string (e.g. '22kg') with the highest numeric value."""
+    scored = [(kg_to_num(v), v) for v in values if kg_to_num(v) is not None]
+    return max(scored, key=lambda x: x[0])[1] if scored else "N/A"
 
 
 raw_text = st.text_area(
@@ -367,7 +381,7 @@ summary_row = {
     "Alternate": cfp_data.get("alt_stn") or "N/A",
     "Avg Bag": "Do manually",
     "Travel Load": totals.get("used_raw", "N/A"),
-    "Avg KG per Passenger": totals.get("avg_checked", "N/A"),
+    "Avg KG per Passenger": pick_highest_kg(totals.get("avg_piece_checked"), totals.get("avg_checked")),
     "Total Baggage Weight": totals.get("weight_checked", "N/A"),
     "Total Allowance": totals.get("allowance", "N/A"),
     "Xtra+SSR": (
