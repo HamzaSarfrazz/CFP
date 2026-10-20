@@ -233,6 +233,11 @@ def pick_highest_kg(*values):
     return max(scored, key=lambda x: x[0])[1] if scored else "N/A"
 
 
+def strip_kg(s):
+    """'22kg' -> '22'. Leaves 'N/A' (or anything without kg) untouched."""
+    return re.sub(r"\s*kg\s*$", "", s, flags=re.IGNORECASE) if isinstance(s, str) else s
+
+
 raw_text = st.text_area(
     "Paste passenger list data here",
     height=350,
@@ -381,8 +386,8 @@ summary_row = {
     "Alternate": cfp_data.get("alt_stn") or "N/A",
     "Avg Bag": "Do manually",
     "Travel Load": totals.get("used_raw", "N/A"),
-    "Avg KG per Passenger": pick_highest_kg(totals.get("avg_piece_checked"), totals.get("avg_checked")),
-    "Total Baggage Weight": totals.get("weight_checked", "N/A"),
+    "Avg KG per Passenger": strip_kg(pick_highest_kg(totals.get("avg_piece_checked"), totals.get("avg_checked"))),
+    "Total Baggage Weight": strip_kg(totals.get("weight_checked", "N/A")),
     "Total Allowance": totals.get("allowance", "N/A"),
     "Xtra+SSR": (
         ex_fc_count_final + total_xb_units
